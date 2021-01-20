@@ -98,7 +98,6 @@ upstream even {
 
 upstream odd {
   server 192.168.100.11;
-  server 192.168.100.13;
 }
 
 server {
