@@ -138,7 +138,7 @@ COPY nginx.conf /etc/nginx/nginx.conf
 RUN apk update && apk add bash
 ````
 
-#### Reverse Proxy Immage
+#### reverseproxy Image Build
 
 ````bash
 $ docker build -t reverseproxy .
@@ -216,6 +216,134 @@ services:
 ## Task 3
 Ajouter la fonctionnalité SSL avec des clés auto-signés au noeud Loadbalanceur NGinx
 - Estimation de la durée de réalisation : 1 heure
-- Indications :  https://youtu.be/X3Pr5VATOyA, https://www.johnmackenzie.co.uk/posts/using-self-signed-ssl-certificates-with-docker-and-nginx/
+- Indications :  [Lien 1](https://youtu.be/X3Pr5VATOyA), [Lien 2](https://www.johnmackenzie.co.uk/posts/using-self-signed-ssl-certificates-with-docker-and-nginx/)
+
+### Solution 3
+
+#### Directory structure and files
 
 
+````bash
+- ssl-docker-nginx/
+   - nginx
+     - logs/
+       - my-site.com.access.log
+     - nginx.conf
+   - site/
+     - index.html
+   - docker-compose.yml
+````
+
+#### NGINX Configuration
+
+````conf
+events {
+  worker_connections  4096;  ## Default: 1024
+}
+
+http {
+    server {
+        listen 80;
+        server_name my-site.com;
+        root         /usr/share/nginx/html/;
+    }
+}
+````
+
+#### docker-compose
+
+````yml
+version: '2'
+services:
+  server:
+    image: nginx:1.15
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./site:/usr/share/nginx/html
+    ports:
+    - "8080:80"
+````
+
+#### Add my-site.com to /etc/hosts
+
+Edit /etc/hosts
+
+````bash
+sudo nano /etc/hosts
+````
+
+Add this line to file and save
+
+````nano
+0.0.0.0    my-site.com
+````
+
+#### Create self-signed SSL certificate
+
+Creating key/cert pair
+````bash
+openssl req -newkey rsa:2048 -nodes -keyout nginx/my-site.com.key -x509 -days 365 -out nginx/my-site.com.crt
+````
+Mounting key/cert pair to container : edit docker-compose.yml
+
+````yml
+version: '2'
+services:
+  server:
+    image: nginx:1.15
+    volumes:
+      - ./site:/usr/share/nginx/html
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./nginx/my-site.com.crt:/etc/nginx/my-site.com.crt # New Line!
+      - ./nginx/my-site.com.key:/etc/nginx/my-site.com.key # New Line!
+    ports:
+    - "8080:80"
+ ````
+ 
+ Opening port 443 on nginx container : edit docker-compose.yml
+ 
+ ````yml
+ version: '2'
+services:
+  server:
+    image: nginx:1.15
+    volumes:
+      - ./site:/usr/share/nginx/html
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./nginx/my-site.com.crt:/etc/nginx/my-site.com.crt
+      - ./nginx/my-site.com.key:/etc/nginx/my-site.com.key
+    ports:
+    - "8080:80"
+    - "443:443" # Signals docker to start listening on 443, and redirect to 443
+````
+
+#### Configuring NGINX to serve my-site.com over https using the self signed certificate
+
+Edit nginx.conf
+
+````conf
+events {
+  worker_connections  4096;  ## Default: 1024
+}
+
+http {
+    server {
+        listen 80;
+        server_name my-site.com;
+        root         /usr/share/nginx/html;
+    }
+
+    server { # This new server will watch for traffic on 443
+        listen              443 ssl;
+        server_name         my-site.com;
+        ssl_certificate     /etc/nginx/my-site.com.crt;
+        ssl_certificate_key /etc/nginx/my-site.com.key;
+        root        /usr/share/nginx/html;
+    }
+}
+````
+
+
+ 
+ 
+ 
