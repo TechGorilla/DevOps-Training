@@ -18,7 +18,7 @@ Configurer une infrastructure composée de 3 VMs Linux. 1 VM jouera le rôle du 
 
 #### Vagrantfile
 
-```bash
+````bash
 OX_IMAGE = "ubuntu/xenial64"
 BALANCER_IP_ADDRESS = "192.168.100.10"
 BALANCER_PORT = 8081
@@ -81,11 +81,11 @@ Vagrant.configure("2") do |config|
     vb.memory = "2048"
   end
 end
-```
+````
 
 #### NGINX Configuration
 
-```
+````conf
  upstream backend {
    server 192.168.100.11;
    server 192.168.100.12;
@@ -119,7 +119,7 @@ server {
     proxy_pass http://backend;
   }
 }
-```
+````
 
 
 
@@ -132,19 +132,86 @@ Recréér l'infrastructure de la Task 1 en utilisant, cette fois ci, des contene
 
 #### Dockerfile
 
-```docker
+````docker
 FROM nginx:alpine
 COPY nginx.conf /etc/nginx/nginx.conf
 RUN apk update && apk add bash
-```
+````
 
 #### Reverse Proxy Immage
 
-```bash
+````bash
 $ docker build -t reverseproxy .
-```
+````
 
+#### NGINX Configuration
 
+````conf
+worker_processes 1;
+  
+events { worker_connections 1024; }
+
+http {
+
+    sendfile on;
+
+    upstream docker-nginx {
+        server nginx:80;
+    }
+
+    upstream docker-apache {
+        server apache:80;
+    }
+    
+    proxy_set_header   Host $host;
+    proxy_set_header   X-Real-IP $remote_addr;
+    proxy_set_header   X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header   X-Forwarded-Host $server_name;
+    
+    server {
+        listen 8080;
+ 
+        location / {
+            proxy_pass         http://docker-nginx;
+            proxy_redirect     off;
+        }
+    }
+ 
+    server {
+        listen 8081;
+ 
+        location / {
+            proxy_pass         http://docker-apache;
+            proxy_redirect     off;
+        }
+    }
+}
+
+````
+
+#### docker-compose
+
+````yml
+services:
+    reverseproxy:
+        image: reverseproxy
+        ports:
+            - 8080:8080
+            - 8081:8081
+        restart: always
+ 
+    nginx:
+        depends_on:
+            - reverseproxy
+        image: nginx:alpine
+        restart: always
+ 
+    apache:
+        depends_on:
+            - reverseproxy
+        image: httpd:alpine
+        restart: always
+````
 
 ## Task 3
 Ajouter la fonctionnalité SSL avec des clés auto-signés au noeud Loadbalanceur NGinx
