@@ -85,11 +85,22 @@ end
 
 #### NGINX Configuration
 
+Enter balancer VM
+
+````bash
+vagrant ssh balancer
+````
+Editing the current nginx.conf
+
+````bash
+sudo nano /etc/nginx/sites-available/default
+````
+_add these lines_
+
 ````conf
  upstream backend {
    server 192.168.100.11;
    server 192.168.100.12;
-   server 192.168.100.13;
  }
 
 upstream even {
@@ -101,7 +112,7 @@ upstream odd {
 }
 
 server {
-  listen 80;
+  listen 80; # leave as is in default file
 
   location /odd/ {
     rewrite ^/odd(.*) /$1 break;
@@ -117,7 +128,6 @@ server {
     rewrite ^/worker(.*) /$1 break;
     proxy_pass http://backend;
   }
-}
 ````
 
 
