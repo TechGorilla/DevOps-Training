@@ -19,7 +19,7 @@ Configurer une infrastructure composée de 3 VMs Linux. 1 VM jouera le rôle du 
 #### Vagrantfile
 
 ````bash
-OX_IMAGE = "ubuntu/xenial64"
+BOX_IMAGE = "ubuntu/xenial64"
 BALANCER_IP_ADDRESS = "192.168.100.10"
 BALANCER_PORT = 8081
 
