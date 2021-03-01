@@ -3,7 +3,7 @@
 
 Date limite de remise du challenge: le 07 mars 2021 
 
-# Task 1: Accessing Docker from a Dockerized Jenkins
+## Task 1: Accessing Docker from a Dockerized Jenkins
 Durée estimée : **Lecture**: 30 minutes **Réalisation**: 2 Heures
 
 L'objectif ici est de comprendre et d'implémenter les alternatives possible pour l'accès à un engine Docker à partir d'un Jenkins Dockerisé. Tiu Wee Han, dans son article [Docker in Jenkins in Docker](https://www.tiuweehan.com/blog/2020-09-10-docker-in-jenkins-in-docker/) explique et illustre les 3 solutions suivantes:
@@ -16,7 +16,106 @@ Travail demandé:
  - Lire, implementer, et tester le [HOW-TO officiel d'installation de Jenkins sous Docker](https://www.jenkins.io/doc/book/installing/docker/). Dédiure laquelle parmi les trois solutions indiquées ci-dessus se trouve-t-elle prévilégiée par l'opinion de Jenkins officiel. 
 
 
-# Task 2: Jenkins Distributed builds with Docker agents
+### Solution Task 1
+#### Solution 1.1 : Build a new Jenkins image with Docker installed
+Modifying the Jenkins image
+````sql
+#Dockerfile 
+
+FROM jenkins/jenkins:lts
+ 
+USER root
+
+RUN apt-get update -qq && apt-get install -qqy apt-transport-https ca-certificates curl gnupg2 software-properties-common
+
+RUN curl -fsSL https://download.docker.com/linux/debian/gpg | apt-key add -
+
+RUN add-apt-repository \
+   "deb [arch=amd64] https://download.docker.com/linux/debian \
+   $(lsb_release -cs) \
+   stable"
+
+RUN apt-get update -qq && apt-get install -qqy docker-ce docker-ce-cli containerd.io
+
+RUN usermod -aG docker jenkins
+
+ENTRYPOINT ["/bin/sh", "-c", "service docker start && /sbin/tini -- /usr/local/bin/jenkins.sh"]
+````
+Build and Run 
+````bash
+#Build image 
+docker build /path/to/Dockerfile --tag jenkins-docker
+
+#Run container
+docker run --rm -d -v ./jenkins_home:/var/jenkins_home -p 8080:8080 -p 50000:50000 --privileged jenkins-docker
+````
+
+#### Solution 1.2 : Mount Hosts Docker Unix socket onto Jenkins coniainer
+Docker-Compose file
+````yaml
+version: "3.7"
+
+services:
+  jenkins:
+    image: jenkins/jenkins:lts
+    user: root
+    container_name: jenkins
+    ports:
+      - 8080:8080
+      - 50000:50000
+    volumes:
+      - ./jenkins:/var/jenkins_home
+      - /usr/bin/docker:/usr/bin/docker
+      - /var/run/docker.sock:/var/run/docker.sock
+````
+
+#### Solution 1.3 : Run Docker in Docker image with TCP socket exposed to Jenkins
+Docker-Compose file
+````yaml
+version: '3.7'
+services:
+  dind:
+    image: docker:dind
+    user: root
+    privileged: true
+    container_name: dind
+    expose:
+      - 2375
+    networks:
+      - jenkins_dind
+    environment:
+      DOCKER_TLS_CERTDIR: ""
+
+  jenkins:
+    image: jenkins/jenkins:lts
+    user: root
+    container_name: jenkins
+    depends_on:
+      - dind
+    ports:
+      - 8080:8080
+      - 50000:50000
+    volumes:
+      - ./jenkins:/var/jenkins_home
+      - /usr/bin/docker:/usr/bin/docker
+    environment:
+      DOCKER_HOST: "tcp://dind:2375"
+    networks:
+      - jenkins_dind
+
+networks:
+  jenkins_dind:
+    driver: bridge
+````
+#### Solution 2 : Testing Official Jenkins in DOcker install
+Create a Bridge Network in Docker
+````bash
+docker network create jenkins
+````
+
+
+
+## Task 2: Jenkins Distributed builds with Docker agents
 Durée estimée : **Katacoda:** 15 à 20 minutes. **Mise en place de l'agent:** 2 Heures
 
 L'objectif ici est de configurer des builds Jenkins distribués dans lesquels Docker joue le rôle d'agent.
