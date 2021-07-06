@@ -24,8 +24,6 @@ On souhaite modifier cet historique pour atteindre les objectifs suivants.
 - Travailler sur l'historique pour implémenter les 6 objectifs listés ci-haut.  Il n'est pas question de modifier le script bash, il faut travailler sur l'historique produit par ce script avec les outils git (et surtout le git rebase -i).
 - Pusher votre historique modifié sur un Repo Cloud privé, auquel vous m'accordiez gentillement le droit de lecture. Y inclure un petit markdown Readme.md listant les opérations que vous avez réalisé pour atteindre chacun des objectifs.
 
-## Solution
-
 #### setup-repository script
 ````sh
 #!/bin/bash
@@ -125,6 +123,8 @@ git commit -am "11- I forgot a semicolon"
 
 # ----- End of the Script
 ````
+
+## Solution
 
 #### Running the script
 ````sh
